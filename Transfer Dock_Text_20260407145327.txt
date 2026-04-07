@@ -1,0 +1,635 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>Apple YouTube Concept</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: { extend: { colors: { accent: 'var(--accent, #3b82f6)' } } }
+    }
+  </script>
+  <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
+  <style>
+    :root { 
+      -webkit-tap-highlight-color: transparent; 
+      --accent: #3b82f6; /* Default Blue */
+    }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      overscroll-behavior-y: none;
+    }
+    
+    /* Apple Glassmorphism Utilities */
+    .apple-glass {
+      backdrop-filter: blur(24px);
+      -webkit-backdrop-filter: blur(24px);
+    }
+    .glass-panel {
+      @apply apple-glass bg-white/70 border border-white/50 shadow-[0_8px_32px_rgba(0,0,0,0.06)];
+    }
+    .dark .glass-panel {
+      @apply bg-[#1C1C1E]/70 border-white/10 shadow-[0_8px_32px_rgba(0,0,0,0.5)];
+    }
+    .glass-btn {
+      @apply apple-glass bg-white/50 border border-white/40 hover:bg-white/70 active:scale-95 transition-all text-gray-800;
+    }
+    .dark .glass-btn {
+      @apply bg-white/10 border-white/5 hover:bg-white/20 text-white;
+    }
+
+    .hide-scrollbar::-webkit-scrollbar { display: none; }
+    .hide-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+    
+    /* View Transitions */
+    .view-section { transition: opacity 0.4s cubic-bezier(0.23, 1, 0.32, 1), transform 0.4s cubic-bezier(0.23, 1, 0.32, 1); }
+    .view-hidden { opacity: 0; pointer-events: none; }
+    #home-view.view-hidden { transform: translateX(-20px); }
+    #video-view { transform: translateY(100%); }
+    #video-view.view-active { transform: translateY(0); opacity: 1; pointer-events: auto; }
+
+    /* Player Specific */
+    input[type=range] { -webkit-appearance: none; background: transparent; }
+    input[type=range]::-webkit-slider-thumb {
+      -webkit-appearance: none; height: 12px; width: 12px; border-radius: 50%;
+      background: #ffffff; box-shadow: 0 0 10px var(--accent); cursor: pointer; margin-top: -4px;
+    }
+    input[type=range]::-webkit-slider-runnable-track { width: 100%; height: 4px; cursor: pointer; background: transparent; }
+    
+    .player-controls { opacity: 0; transition: opacity 0.3s; }
+    .player-controls.active { opacity: 1; }
+    
+    /* Tap Zones */
+    .tap-zone { position: absolute; top: 0; bottom: 20%; width: 40%; z-index: 10; }
+    .tap-zone.left { left: 0; }
+    .tap-zone.right { right: 0; }
+    .tap-indicator {
+      position: absolute; top: 50%; transform: translateY(-50%);
+      background: rgba(0,0,0,0.6); color: white; padding: 10px 20px;
+      border-radius: 20px; font-weight: bold; pointer-events: none;
+      opacity: 0; transition: opacity 0.2s; z-index: 20; backdrop-filter: blur(8px);
+    }
+    .tap-indicator.active { opacity: 1; }
+    .tap-indicator.left { left: 10%; }
+    .tap-indicator.right { right: 10%; }
+  </style>
+</head>
+<body class="bg-[#F2F4F7] dark:bg-[#000000] text-gray-900 dark:text-white selection:bg-accent/30 transition-colors duration-300">
+
+  <!-- Ambient Glow -->
+  <div class="fixed inset-0 z-0 pointer-events-none overflow-hidden opacity-100 dark:opacity-60 transition-opacity">
+    <div class="absolute top-[-10%] left-[-10%] w-[50%] h-[50%] bg-blue-400/20 dark:bg-blue-900/20 rounded-full blur-[100px]"></div>
+    <div class="absolute bottom-[20%] right-[-10%] w-[60%] h-[60%] bg-purple-400/20 dark:bg-purple-900/20 rounded-full blur-[120px]"></div>
+  </div>
+
+  <div class="max-w-md mx-auto relative min-h-screen pb-24 bg-white/40 dark:bg-[#0F0F13]/90 backdrop-blur-3xl overflow-hidden border-x border-black/5 dark:border-white/5 transition-colors duration-300" id="app-container">
+
+    <!-- HOME VIEW -->
+    <div id="home-view" class="view-section absolute inset-0 z-10 opacity-100">
+      
+      <!-- Header -->
+      <header class="fixed top-0 w-full max-w-md z-40 transition-all duration-300 pt-12 pb-4 px-6 glass-panel border-t-0 border-x-0" id="main-header">
+        <div class="flex items-center justify-between">
+          <div class="flex items-center gap-2">
+            <svg viewBox="0 0 384 512" class="w-5 h-5 fill-current text-black dark:text-white transition-colors" xmlns="http://www.w3.org/2000/svg"><path d="M318.7 268.7c-.2-36.7 16.4-64.4 50-84.8-18.8-26.9-47.2-41.7-84.7-44.6-35.5-2.8-74.3 20.7-88.5 20.7-15 0-49.4-19.7-76.4-19.7C63.3 141.2 4 184.8 4 273.5q0 39.3 14.4 81.2c12.8 36.7 59 126.7 107.2 125.2 25.2-.6 43-17.9 75.8-17.9 31.8 0 48.3 17.9 76.4 17.9 48.6-.7 90.4-82.5 102.6-119.3-65.2-30.7-61.7-90-61.7-91.9zm-56.6-164.2c27.3-32.4 24.8-61.9 24-72.5-24.1 1.4-52 16.4-67.9 34.9-17.5 19.8-27.8 44.3-25.6 71.9 26.1 2 49.9-11.4 69.5-34.3z"/></svg>
+            <span class="text-xl font-bold tracking-tight text-black dark:text-white transition-colors">YouTube</span>
+          </div>
+          <div class="flex items-center gap-4">
+            <!-- App Settings Gear Icon -->
+            <button onclick="openAppSettings()" class="w-8 h-8 rounded-full bg-black/5 dark:bg-white/10 flex items-center justify-center hover:bg-black/10 dark:hover:bg-white/20 active:scale-95 transition">
+              <svg class="w-5 h-5 text-gray-800 dark:text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path></svg>
+            </button>
+            <div class="w-7 h-7 rounded-full bg-gradient-to-tr from-accent to-gray-400 overflow-hidden shadow-sm">
+              <img src="https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&q=80&w=100" class="w-full h-full object-cover" />
+            </div>
+          </div>
+        </div>
+
+        <!-- Categories -->
+        <div class="flex gap-2 mt-5 overflow-x-auto hide-scrollbar pb-1 -mx-6 px-6">
+          <button class="px-5 py-2 rounded-full whitespace-nowrap text-sm font-medium bg-black dark:bg-white text-white dark:text-black transition-all">All</button>
+          <button class="px-5 py-2 rounded-full whitespace-nowrap text-sm font-medium glass-btn">Music</button>
+          <button class="px-5 py-2 rounded-full whitespace-nowrap text-sm font-medium glass-btn">Gaming</button>
+          <button class="px-5 py-2 rounded-full whitespace-nowrap text-sm font-medium glass-btn">Live</button>
+          <button class="px-5 py-2 rounded-full whitespace-nowrap text-sm font-medium glass-btn">Tech</button>
+        </div>
+      </header>
+
+      <!-- Video Feed -->
+      <main class="pt-[150px] px-4 space-y-5 overflow-y-auto h-screen pb-32 hide-scrollbar" id="video-list">
+        <!-- Rendered via JS -->
+      </main>
+
+      <!-- Floating Dock -->
+      <div class="fixed bottom-6 left-1/2 -translate-x-1/2 w-[90%] max-w-[380px] z-50">
+        <div class="glass-panel rounded-full px-6 py-4 flex justify-between items-center shadow-2xl">
+          <button class="flex flex-col items-center gap-1 active:scale-90 transition-transform text-black dark:text-white"><svg class="w-6 h-6 fill-current" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"></path></svg></button>
+          <button class="flex flex-col items-center gap-1 active:scale-90 transition-transform text-gray-500 dark:text-gray-400 hover:text-black dark:hover:text-white transition-colors"><svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"></path></svg></button>
+          
+          <!-- Add Video Action -->
+          <button onclick="openAddModal()" class="flex flex-col items-center justify-center w-12 h-12 rounded-full bg-black/5 dark:bg-white/10 border border-black/10 dark:border-white/20 active:scale-90 transition-transform text-black dark:text-white shadow-inner"><svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path></svg></button>
+          
+          <button class="flex flex-col items-center gap-1 active:scale-90 transition-transform text-gray-500 dark:text-gray-400 hover:text-black dark:hover:text-white transition-colors"><svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z"></path></svg></button>
+          <button class="flex flex-col items-center gap-1 active:scale-90 transition-transform text-gray-500 dark:text-gray-400 hover:text-black dark:hover:text-white transition-colors"><svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 10h16M4 14h16M4 18h16"></path></svg></button>
+        </div>
+      </div>
+    </div>
+
+    <!-- APP SETTINGS MODAL (iOS Style) -->
+    <div id="app-settings-modal" class="fixed inset-0 bg-black/40 dark:bg-black/60 backdrop-blur-sm z-[100] hidden flex-col justify-end px-2 pb-6 opacity-0 transition-opacity">
+      <div class="bg-[#F2F2F7] dark:bg-[#1C1C1E] w-full max-w-md mx-auto rounded-[24px] p-5 shadow-2xl transform translate-y-full transition-transform duration-300" id="app-settings-content">
+        <div class="flex justify-between items-center mb-6">
+          <h3 class="text-xl font-bold text-black dark:text-white">Settings</h3>
+          <button onclick="closeAppSettings()" class="p-1.5 rounded-full bg-gray-200 dark:bg-white/10 active:scale-90 transition"><svg class="w-5 h-5 text-gray-600 dark:text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg></button>
+        </div>
+
+        <div class="space-y-6">
+          <!-- Appearance Group -->
+          <div>
+            <h4 class="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-2 ml-2">Appearance</h4>
+            <div class="bg-white dark:bg-[#2C2C2E] rounded-2xl overflow-hidden shadow-sm">
+              <div class="flex p-1 bg-gray-100 dark:bg-[#1C1C1E] m-2 rounded-xl">
+                <button onclick="setTheme('light')" id="btn-theme-light" class="flex-1 py-2 text-sm font-semibold rounded-lg text-gray-600 transition">Light</button>
+                <button onclick="setTheme('dark')" id="btn-theme-dark" class="flex-1 py-2 text-sm font-semibold rounded-lg text-gray-600 transition">Dark</button>
+                <button onclick="setTheme('system')" id="btn-theme-system" class="flex-1 py-2 text-sm font-semibold rounded-lg text-gray-600 transition">System</button>
+              </div>
+            </div>
+          </div>
+
+          <!-- Color Group -->
+          <div>
+            <h4 class="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-2 ml-2">Accent Color</h4>
+            <div class="bg-white dark:bg-[#2C2C2E] rounded-2xl p-4 shadow-sm flex justify-around">
+              <button onclick="setAccent('#3b82f6')" class="w-10 h-10 rounded-full bg-blue-500 shadow-sm border-2 border-transparent focus:border-gray-400 active:scale-90 transition"></button>
+              <button onclick="setAccent('#a855f7')" class="w-10 h-10 rounded-full bg-purple-500 shadow-sm border-2 border-transparent focus:border-gray-400 active:scale-90 transition"></button>
+              <button onclick="setAccent('#ef4444')" class="w-10 h-10 rounded-full bg-red-500 shadow-sm border-2 border-transparent focus:border-gray-400 active:scale-90 transition"></button>
+              <button onclick="setAccent('#22c55e')" class="w-10 h-10 rounded-full bg-green-500 shadow-sm border-2 border-transparent focus:border-gray-400 active:scale-90 transition"></button>
+              <button onclick="setAccent('#f97316')" class="w-10 h-10 rounded-full bg-orange-500 shadow-sm border-2 border-transparent focus:border-gray-400 active:scale-90 transition"></button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- VIDEO PLAYER VIEW -->
+    <div id="video-view" class="view-section absolute inset-0 bg-white dark:bg-[#0F0F13] z-50 view-hidden flex flex-col transition-colors">
+      <header class="pt-12 pb-4 px-4 flex items-center justify-between glass-panel z-20 shrink-0 border-t-0 border-x-0">
+        <button onclick="closeVideo()" class="p-2 rounded-full hover:bg-black/5 dark:hover:bg-white/10 active:scale-90 transition-all text-black dark:text-white">
+          <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"></path></svg>
+        </button>
+        <span class="font-bold text-lg tracking-tight text-black dark:text-white">Now Playing</span>
+        <button onclick="toggleSettings()" class="p-2 rounded-full hover:bg-black/5 dark:hover:bg-white/10 active:scale-90 transition-all text-black dark:text-white">
+          <!-- Player Settings Gear -->
+          <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4"></path></svg>
+        </button>
+      </header>
+
+      <div class="flex-1 overflow-y-auto pb-20 relative">
+        <div class="px-4 mt-2" id="player-wrapper">
+          <div id="player-container" class="w-full aspect-video rounded-[24px] overflow-hidden bg-black relative shadow-2xl border border-black/10 dark:border-white/5">
+            <video id="main-video" class="w-full h-full object-contain" playsinline crossorigin="anonymous"></video>
+            
+            <div class="tap-zone left" onclick="handleTap('left')"></div>
+            <div class="tap-zone right" onclick="handleTap('right')"></div>
+            <div class="absolute inset-0 z-0" onclick="handleTap('center')"></div>
+            
+            <div id="tap-ind-left" class="tap-indicator left">-10s</div>
+            <div id="tap-ind-right" class="tap-indicator right">+10s</div>
+
+            <div id="video-loader" class="absolute inset-0 flex items-center justify-center z-10 hidden bg-black/40 backdrop-blur-sm">
+              <div class="w-8 h-8 border-4 border-white/20 border-t-white rounded-full animate-spin"></div>
+            </div>
+
+            <!-- Controls (Always dark/glass overlay) -->
+            <div id="controls-overlay" class="player-controls absolute inset-0 bg-gradient-to-t from-black/90 via-black/20 to-transparent flex flex-col justify-end p-5 z-20 active">
+              <div class="flex items-center justify-between mb-3 text-white/90 text-xs font-semibold">
+                <span id="time-current">0:00</span>
+                <span id="buffer-info" class="text-white/40 text-[10px]">Buffered: 0s</span>
+                <span id="time-total">0:00</span>
+              </div>
+
+              <div class="relative w-full h-[6px] mb-4 group cursor-pointer" id="seek-container">
+                <div class="absolute inset-y-0 left-0 w-full bg-white/20 rounded-full"></div>
+                <div id="seek-buffered" class="absolute inset-y-0 left-0 bg-white/30 rounded-full pointer-events-none" style="width: 0%;"></div>
+                <div id="seek-played" class="absolute inset-y-0 left-0 bg-accent rounded-full pointer-events-none shadow-[0_0_10px_var(--accent)]" style="width: 0%;"></div>
+                <input type="range" id="seek-input" min="0" max="100" value="0" class="absolute inset-0 w-full h-full opacity-0 z-30 cursor-pointer">
+              </div>
+
+              <div class="flex items-center justify-between text-white">
+                <button onclick="togglePlay()" class="p-2 active:scale-90 transition hover:bg-white/10 rounded-full">
+                  <svg id="icon-play" class="w-7 h-7" fill="currentColor" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>
+                  <svg id="icon-pause" class="w-7 h-7 hidden" fill="currentColor" viewBox="0 0 24 24"><path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"/></svg>
+                </button>
+                <button onclick="toggleFullscreen()" class="p-2 active:scale-90 transition hover:bg-white/10 rounded-full">
+                  <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 0l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5l-5-5m5 5v-4m0 4h-4"></path></svg>
+                </button>
+              </div>
+            </div>
+
+            <!-- Player Settings Panel -->
+            <div id="settings-panel" class="absolute inset-0 bg-black/80 backdrop-blur-xl z-30 hidden flex-col p-6 text-white overflow-y-auto">
+              <div class="flex justify-between items-center mb-6">
+                <h3 class="font-bold text-lg">Playback Settings</h3>
+                <button onclick="toggleSettings()" class="p-2 bg-white/10 rounded-full"><svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg></button>
+              </div>
+              
+              <div class="space-y-6">
+                <div>
+                  <label class="block text-sm text-white/60 mb-2">Quality</label>
+                  <select id="quality-select" onchange="changeQuality(this.value)" class="w-full bg-white/10 rounded-xl p-3 outline-none border border-white/10 text-sm appearance-none">
+                    <option value="-1" class="bg-[#1C1C1E]">Auto</option>
+                  </select>
+                </div>
+                
+                <div>
+                  <label class="block text-sm text-white/60 mb-2">Speed</label>
+                  <div class="flex gap-2 overflow-x-auto hide-scrollbar">
+                    <button onclick="changeSpeed(0.5)" class="speed-btn px-4 py-2 bg-white/10 rounded-full text-sm border border-transparent">0.5x</button>
+                    <button onclick="changeSpeed(1)" class="speed-btn px-4 py-2 bg-accent rounded-full text-white text-sm font-semibold">1x</button>
+                    <button onclick="changeSpeed(1.5)" class="speed-btn px-4 py-2 bg-white/10 rounded-full text-sm border border-transparent">1.5x</button>
+                    <button onclick="changeSpeed(2)" class="speed-btn px-4 py-2 bg-white/10 rounded-full text-sm border border-transparent">2x</button>
+                  </div>
+                </div>
+
+                <div>
+                  <label class="block text-sm text-white/60 mb-2">Subtitles (.vtt / .srt)</label>
+                  <input type="file" id="subtitle-upload" accept=".vtt,.srt" class="block w-full text-sm text-gray-300 file:mr-4 file:py-2.5 file:px-5 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-white/10 file:text-white hover:file:bg-white/20 transition"/>
+                  <button id="toggle-sub-btn" onclick="toggleSubtitles()" class="mt-3 px-4 py-2 bg-accent rounded-full text-white text-sm font-semibold hidden">Toggle Subtitles</button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="px-6 mt-6">
+          <h1 id="vid-title" class="text-2xl font-bold leading-tight text-gray-900 dark:text-white mb-2">Title</h1>
+          <div class="flex items-center text-sm text-gray-500 dark:text-gray-400 font-medium mb-6">
+            <span>Personal Library</span>
+            <span class="mx-2">•</span>
+            <span>Local Playback</span>
+          </div>
+
+          <!-- Actions -->
+          <div class="flex gap-3 overflow-x-auto hide-scrollbar pb-2">
+             <button class="flex items-center gap-2 px-5 py-2.5 rounded-full whitespace-nowrap text-sm font-medium glass-btn">
+               <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 10h4.764a2 2 0 011.789 2.894l-3.5 7A2 2 0 0115.263 21h-4.017c-.163 0-.326-.02-.485-.06L7 20m7-10V5a2 2 0 00-2-2h-.095c-.5 0-.905.405-.905.905 0 .714-.211 1.412-.608 2.006L7 11v9m7-10h-2M7 20H5a2 2 0 01-2-2v-6a2 2 0 012-2h2.5"></path></svg> Like
+             </button>
+             <button class="flex items-center gap-2 px-5 py-2.5 rounded-full whitespace-nowrap text-sm font-medium glass-btn">
+               <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z"></path></svg> Share
+             </button>
+             <button class="flex items-center gap-2 px-5 py-2.5 rounded-full whitespace-nowrap text-sm font-medium glass-btn">
+               <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path></svg> Save
+             </button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ADD VIDEO MODAL -->
+    <div id="add-modal" class="fixed inset-0 bg-black/40 dark:bg-black/60 backdrop-blur-sm z-[100] hidden flex items-center justify-center px-4 opacity-0 transition-opacity">
+      <div class="bg-white/90 dark:bg-[#1C1C1E] w-full max-w-sm rounded-[28px] p-6 shadow-2xl border border-black/10 dark:border-white/10 transform scale-95 transition-transform" id="add-modal-content">
+        <h3 class="text-xl font-bold mb-4 text-black dark:text-white">Add Video</h3>
+        <input type="text" id="add-url" placeholder="Video URL (.m3u8, .mp4)" class="w-full bg-gray-100 dark:bg-black/50 border border-gray-200 dark:border-white/10 rounded-xl p-4 mb-3 outline-none focus:border-accent text-black dark:text-white placeholder-gray-500">
+        <input type="text" id="add-title" placeholder="Title (Optional)" class="w-full bg-gray-100 dark:bg-black/50 border border-gray-200 dark:border-white/10 rounded-xl p-4 mb-6 outline-none focus:border-accent text-black dark:text-white placeholder-gray-500">
+        <div class="flex gap-3">
+          <button onclick="closeAddModal()" class="flex-1 py-3.5 rounded-xl bg-gray-200 dark:bg-white/10 text-gray-800 dark:text-white font-semibold active:scale-95 transition">Cancel</button>
+          <button onclick="saveVideo()" class="flex-1 py-3.5 rounded-xl bg-accent text-white font-bold active:scale-95 transition">Save</button>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <script>
+    // --- APP STATE & THEME ENGINE ---
+    let videos = JSON.parse(localStorage.getItem('apple_yt_videos')) || [];
+    let appSettings = JSON.parse(localStorage.getItem('apple_yt_settings')) || { theme: 'dark', accent: '#3b82f6' };
+    let currentHls = null;
+    let controlsTimeout = null;
+    let lastTapTime = 0;
+    let subtitleUrl = null;
+
+    function initTheme() {
+      setTheme(appSettings.theme, true);
+      setAccent(appSettings.accent, true);
+    }
+
+    function setTheme(mode, initial = false) {
+      appSettings.theme = mode;
+      localStorage.setItem('apple_yt_settings', JSON.stringify(appSettings));
+      
+      const isDark = mode === 'dark' || (mode === 'system' && window.matchMedia('(prefers-color-scheme: dark)').matches);
+      if(isDark) document.documentElement.classList.add('dark');
+      else document.documentElement.classList.remove('dark');
+
+      // Update UI Toggles
+      document.querySelectorAll('#btn-theme-light, #btn-theme-dark, #btn-theme-system').forEach(btn => {
+        btn.classList.remove('bg-white', 'dark:bg-[#3A3A3C]', 'shadow', 'text-black', 'dark:text-white');
+        btn.classList.add('text-gray-600');
+      });
+      const activeBtn = document.getElementById(`btn-theme-${mode}`);
+      if(activeBtn) {
+        activeBtn.classList.remove('text-gray-600');
+        activeBtn.classList.add('bg-white', 'dark:bg-[#3A3A3C]', 'shadow', 'text-black', 'dark:text-white');
+      }
+    }
+
+    function setAccent(color, initial = false) {
+      appSettings.accent = color;
+      localStorage.setItem('apple_yt_settings', JSON.stringify(appSettings));
+      document.documentElement.style.setProperty('--accent', color);
+    }
+
+    window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', e => {
+      if(appSettings.theme === 'system') setTheme('system');
+    });
+
+    // --- DOM ELEMENTS ---
+    const dom = {
+      homeView: document.getElementById('home-view'),
+      videoView: document.getElementById('video-view'),
+      videoList: document.getElementById('video-list'),
+      addModal: document.getElementById('add-modal'),
+      modalContent: document.getElementById('add-modal-content'),
+      appSettingsModal: document.getElementById('app-settings-modal'),
+      appSettingsContent: document.getElementById('app-settings-content'),
+      urlInput: document.getElementById('add-url'),
+      titleInput: document.getElementById('add-title'),
+      
+      video: document.getElementById('main-video'),
+      loader: document.getElementById('video-loader'),
+      controls: document.getElementById('controls-overlay'),
+      seekInput: document.getElementById('seek-input'),
+      seekPlayed: document.getElementById('seek-played'),
+      seekBuffered: document.getElementById('seek-buffered'),
+      timeCur: document.getElementById('time-current'),
+      timeTot: document.getElementById('time-total'),
+      bufInfo: document.getElementById('buffer-info'),
+      iconPlay: document.getElementById('icon-play'),
+      iconPause: document.getElementById('icon-pause'),
+      
+      settings: document.getElementById('settings-panel'),
+      qualSelect: document.getElementById('quality-select'),
+      subUpload: document.getElementById('subtitle-upload'),
+      subToggle: document.getElementById('toggle-sub-btn'),
+      vidTitle: document.getElementById('vid-title')
+    };
+
+    function init() {
+      initTheme();
+      if (videos.length === 0) {
+        videos.push({ id: Date.now().toString(), title: "Apple Event - Concept", url: "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4" });
+        localStorage.setItem('apple_yt_videos', JSON.stringify(videos));
+      }
+      renderLibrary();
+      setupPlayerEvents();
+    }
+
+    // --- APP MODALS ---
+    function openAppSettings() {
+      dom.appSettingsModal.classList.remove('hidden');
+      setTimeout(() => { 
+        dom.appSettingsModal.classList.remove('opacity-0'); 
+        dom.appSettingsContent.classList.remove('translate-y-full'); 
+      }, 10);
+    }
+    
+    function closeAppSettings() {
+      dom.appSettingsModal.classList.add('opacity-0'); 
+      dom.appSettingsContent.classList.add('translate-y-full');
+      setTimeout(() => dom.appSettingsModal.classList.add('hidden'), 300);
+    }
+
+    function openAddModal() {
+      dom.addModal.classList.remove('hidden');
+      setTimeout(() => { dom.addModal.classList.remove('opacity-0'); dom.modalContent.classList.remove('scale-95'); }, 10);
+    }
+    
+    function closeAddModal() {
+      dom.addModal.classList.add('opacity-0'); dom.modalContent.classList.add('scale-95');
+      setTimeout(() => dom.addModal.classList.add('hidden'), 300);
+      dom.urlInput.value = ''; dom.titleInput.value = '';
+    }
+
+    // --- LIBRARY ---
+    function renderLibrary() {
+      dom.videoList.innerHTML = '';
+      if(videos.length === 0) {
+        dom.videoList.innerHTML = '<p class="text-center text-gray-500 mt-10">No videos added yet.</p>'; return;
+      }
+      
+      videos.forEach(v => {
+        const div = document.createElement('div');
+        div.className = "relative w-full aspect-[16/9] rounded-[28px] overflow-hidden group cursor-pointer border border-black/5 dark:border-white/5 shadow-lg bg-gray-200 dark:bg-[#151515] transition-colors";
+        div.onclick = () => playVideo(v.id);
+        
+        div.innerHTML = `
+          <div class="absolute inset-0 bg-gradient-to-br from-black/10 to-black/40 dark:from-gray-800/40 dark:to-black/80 flex items-center justify-center">
+            <svg class="w-12 h-12 text-white/40 dark:text-white/20" fill="currentColor" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>
+          </div>
+          <div class="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent"></div>
+          
+          <div class="absolute bottom-5 left-5 right-14 z-10">
+            <h3 class="font-bold text-lg text-white leading-tight line-clamp-1 mb-1">${v.title || 'Untitled Video'}</h3>
+            <p class="text-sm text-gray-300 dark:text-gray-400 truncate">${v.url.split('?')[0].split('/').pop()}</p>
+          </div>
+
+          <button onclick="event.stopPropagation(); deleteVideo('${v.id}')" class="absolute bottom-5 right-4 p-2.5 bg-white/20 hover:bg-red-500/80 rounded-full text-white backdrop-blur-md active:scale-90 transition-all">
+             <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
+          </button>
+        `;
+        dom.videoList.appendChild(div);
+      });
+    }
+
+    function saveVideo() {
+      const url = dom.urlInput.value.trim();
+      const title = dom.titleInput.value.trim() || 'Untitled Video';
+      if(!url) return alert('URL is required');
+      videos.unshift({ id: Date.now().toString(), title, url });
+      localStorage.setItem('apple_yt_videos', JSON.stringify(videos));
+      renderLibrary(); closeAddModal();
+    }
+
+    function deleteVideo(id) {
+      if(confirm('Delete this video?')) {
+        videos = videos.filter(v => v.id !== id);
+        localStorage.setItem('apple_yt_videos', JSON.stringify(videos));
+        renderLibrary();
+      }
+    }
+
+    // --- PLAYER LOGIC ---
+    function playVideo(id) {
+      const vid = videos.find(v => v.id === id); if(!vid) return;
+      dom.vidTitle.textContent = vid.title;
+      dom.homeView.classList.add('view-hidden');
+      dom.videoView.classList.remove('view-hidden');
+      dom.videoView.classList.add('view-active');
+      loadSource(vid.url);
+    }
+
+    function closeVideo() {
+      dom.videoView.classList.remove('view-active');
+      dom.videoView.classList.add('view-hidden');
+      dom.homeView.classList.remove('view-hidden');
+      setTimeout(() => {
+        if(currentHls) { currentHls.destroy(); currentHls = null; }
+        dom.video.pause(); dom.video.src = ''; dom.video.removeAttribute('src');
+        resetPlayerUI();
+      }, 400);
+    }
+
+    function loadSource(url) {
+      dom.loader.classList.remove('hidden');
+      if(currentHls) { currentHls.destroy(); currentHls = null; }
+      resetPlayerUI();
+      Array.from(dom.video.querySelectorAll('track')).forEach(t => t.remove());
+
+      if (url.includes('.m3u8') && Hls.isSupported()) {
+        currentHls = new Hls({ maxMaxBufferLength: 30 });
+        currentHls.loadSource(url); currentHls.attachMedia(dom.video);
+        currentHls.on(Hls.Events.MANIFEST_PARSED, (e, data) => { populateQuality(data.levels); dom.video.play().catch(e=>console.log(e)); });
+        currentHls.on(Hls.Events.ERROR, (e, data) => {
+          if (data.fatal) {
+            if(data.type === Hls.ErrorTypes.NETWORK_ERROR) currentHls.startLoad();
+            else if(data.type === Hls.ErrorTypes.MEDIA_ERROR) currentHls.recoverMediaError();
+            else fallbackNative(url);
+          }
+        });
+      } else { fallbackNative(url); }
+    }
+
+    function fallbackNative(url) {
+      if(currentHls) { currentHls.destroy(); currentHls = null; }
+      dom.video.src = url; dom.video.load(); dom.video.play().catch(e=>console.log(e));
+      dom.qualSelect.innerHTML = '<option value="-1" class="bg-[#1C1C1E]">Native (Auto)</option>';
+    }
+
+    function resetPlayerUI() {
+      dom.qualSelect.innerHTML = '<option value="-1" class="bg-[#1C1C1E]">Auto</option>';
+      dom.subToggle.classList.add('hidden'); dom.subUpload.value = '';
+      if(subtitleUrl) { URL.revokeObjectURL(subtitleUrl); subtitleUrl = null; }
+      changeSpeed(1);
+    }
+
+    function setupPlayerEvents() {
+      dom.video.addEventListener('timeupdate', updateProgress);
+      dom.video.addEventListener('progress', updateBuffer);
+      dom.video.addEventListener('play', () => { dom.iconPlay.classList.add('hidden'); dom.iconPause.classList.remove('hidden'); dom.loader.classList.add('hidden'); });
+      dom.video.addEventListener('pause', () => { dom.iconPause.classList.add('hidden'); dom.iconPlay.classList.remove('hidden'); });
+      dom.video.addEventListener('waiting', () => dom.loader.classList.remove('hidden'));
+      dom.video.addEventListener('playing', () => dom.loader.classList.add('hidden'));
+      dom.seekInput.addEventListener('input', (e) => {
+        const t = (e.target.value / 100) * dom.video.duration;
+        if(!isNaN(t)) dom.video.currentTime = t;
+      });
+      dom.subUpload.addEventListener('change', handleSubtitleUpload);
+    }
+
+    function togglePlay() { if(dom.video.paused) dom.video.play(); else dom.video.pause(); }
+
+    function updateProgress() {
+      if(!dom.video.duration) return;
+      const pct = (dom.video.currentTime / dom.video.duration) * 100;
+      dom.seekInput.value = pct; dom.seekPlayed.style.width = pct + '%';
+      dom.timeCur.textContent = formatTime(dom.video.currentTime);
+      dom.timeTot.textContent = formatTime(dom.video.duration);
+      updateBuffer();
+    }
+
+    function updateBuffer() {
+      const b = dom.video.buffered;
+      if (b.length > 0 && dom.video.duration) {
+        let maxEnd = 0;
+        for(let i=0; i<b.length; i++) if(b.start(i) <= dom.video.currentTime && b.end(i) > dom.video.currentTime) { maxEnd = b.end(i); break; }
+        dom.seekBuffered.style.width = (maxEnd / dom.video.duration) * 100 + '%';
+        dom.bufInfo.textContent = `Buffered: ${Math.round(Math.max(0, maxEnd - dom.video.currentTime))}s`;
+      }
+    }
+
+    function handleTap(region) {
+      const now = new Date().getTime(), tapLen = now - lastTapTime;
+      if(tapLen < 300 && tapLen > 0) {
+        clearTimeout(controlsTimeout);
+        if(region === 'left') { dom.video.currentTime = Math.max(0, dom.video.currentTime - 10); showTapIndicator('left'); }
+        else if(region === 'right') { dom.video.currentTime = Math.min(dom.video.duration, dom.video.currentTime + 10); showTapIndicator('right'); }
+      } else {
+        controlsTimeout = setTimeout(() => {
+          dom.controls.classList.toggle('active');
+          if(dom.controls.classList.contains('active')) hideControlsAuto();
+        }, 300);
+      }
+      lastTapTime = now;
+    }
+
+    function showTapIndicator(dir) {
+      const ind = document.getElementById(`tap-ind-${dir}`); ind.classList.add('active');
+      setTimeout(() => ind.classList.remove('active'), 500);
+    }
+
+    function hideControlsAuto() {
+      clearTimeout(window.hideTimer);
+      window.hideTimer = setTimeout(() => { if(!dom.video.paused) dom.controls.classList.remove('active'); }, 3000);
+    }
+
+    function toggleFullscreen() {
+      const c = document.getElementById('player-container');
+      if (!document.fullscreenElement && !document.webkitFullscreenElement) {
+        if (c.requestFullscreen) c.requestFullscreen(); else if (c.webkitRequestFullscreen) c.webkitRequestFullscreen();
+      } else {
+        if (document.exitFullscreen) document.exitFullscreen(); else if (document.webkitExitFullscreen) document.webkitExitFullscreen();
+      }
+    }
+
+    function toggleSettings() { dom.settings.classList.toggle('hidden'); dom.settings.classList.toggle('flex'); }
+
+    function populateQuality(levels) {
+      dom.qualSelect.innerHTML = '<option value="-1" class="bg-[#1C1C1E]">Auto</option>';
+      levels.forEach((l, i) => {
+        const opt = document.createElement('option'); opt.value = i; opt.className = 'bg-[#1C1C1E]';
+        opt.textContent = `${l.height}p ${Math.round(l.bitrate/1000)}kbps`; dom.qualSelect.appendChild(opt);
+      });
+    }
+
+    function changeQuality(val) { if(currentHls) currentHls.currentLevel = parseInt(val); toggleSettings(); }
+
+    function changeSpeed(s) {
+      dom.video.playbackRate = s;
+      document.querySelectorAll('.speed-btn').forEach(btn => {
+        btn.className = 'speed-btn px-4 py-2 bg-white/10 rounded-full text-sm border border-transparent text-white';
+        if(btn.textContent.includes(s)) btn.className = 'speed-btn px-4 py-2 bg-accent rounded-full text-white text-sm font-bold';
+      });
+    }
+
+    async function handleSubtitleUpload(e) {
+      const file = e.target.files[0]; if(!file) return;
+      const text = await file.text();
+      let vttData = text;
+      if(file.name.endsWith('.srt')) vttData = "WEBVTT\n\n" + text.replace(/\r/g, '').replace(/(\d{2}:\d{2}:\d{2}),(\d{3})/g, '$1.$2').replace(/(\d{2}:\d{2}:\d{2}),(\d{2})/g, '$1.$20').replace(/(\d{2}:\d{2}:\d{2}),(\d{1})/g, '$1.$200');
+      if(subtitleUrl) URL.revokeObjectURL(subtitleUrl);
+      subtitleUrl = URL.createObjectURL(new Blob([vttData], {type: 'text/vtt'}));
+      Array.from(dom.video.querySelectorAll('track')).forEach(t => t.remove());
+      const track = document.createElement('track');
+      track.src = subtitleUrl; track.kind = 'subtitles'; track.srclang = 'en'; track.label = 'Custom'; track.default = true;
+      dom.video.appendChild(track);
+      dom.video.textTracks[0].mode = 'showing'; dom.subToggle.classList.remove('hidden');
+    }
+
+    function toggleSubtitles() {
+      if(!dom.video.textTracks[0]) return;
+      const t = dom.video.textTracks[0]; t.mode = (t.mode === 'showing') ? 'hidden' : 'showing';
+    }
+
+    function formatTime(s) {
+      if(!s || isNaN(s)) return "0:00";
+      const m = Math.floor(s / 60), secs = Math.floor(s % 60);
+      return `${m}:${secs < 10 ? '0' : ''}${secs}`;
+    }
+
+    init();
+  </script>
+</body>
+</html>
